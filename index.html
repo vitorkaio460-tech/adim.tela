@@ -4,11 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎫 Gerador de Passagem</title>
-    
-    <!-- Biblioteca jsPDF para gerar PDF diretamente -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -58,8 +53,7 @@
             cursor: pointer;
             transition: 0.3s;
         }
-        .btn-gerar:hover { background: #1e7e34; transform: scale(1.02); }
-        .btn-gerar:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-gerar:hover { background: #1e7e34; }
         .btn-limpar {
             padding: 14px 30px;
             background: #6c757d;
@@ -86,28 +80,19 @@
             align-self: flex-start;
         }
         .btn-small:hover { background: #495057; }
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-            font-size: 16px;
-            color: #28a745;
-        }
-        .loading.ativo { display: block; }
         
         @media (max-width: 700px) {
             .grid-2, .grid-3 { grid-template-columns: 1fr; }
         }
 
-        /* ===== ESTILOS DA PASSAGEM (PARA CAPTURA) ===== */
+        /* ===== ESTILOS DA PASSAGEM (PARA IMPRESSÃO) ===== */
         #passagem {
-            position: absolute;
-            left: -9999px;
-            top: 0;
+            display: none;
             font-family: Arial, Helvetica, sans-serif;
             font-size: 10px;
             padding: 20px;
             width: 210mm;
+            margin: 0 auto;
             background: #fff;
         }
         #passagem .header {
@@ -172,17 +157,51 @@
             padding-top: 5px;
         }
         #passagem .fundo-cinza { background: #f5f5f5; }
+
+        /* ===== REGRAS DE IMPRESSÃO ===== */
+        @media print {
+            body * { visibility: hidden; }
+            #passagem, #passagem * { visibility: visible; }
+            #passagem {
+                display: block !important;
+                position: fixed;
+                left: 0;
+                top: 0;
+                width: 100%;
+                padding: 15px;
+            }
+            .no-print { display: none !important; }
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
+<div class="container no-print">
     <h1>🚌 Gerador de Passagem</h1>
-    <p class="subtitle">Preencha os dados e clique em "Baixar PDF"</p>
-
-    <div class="loading" id="loading">⏳ Gerando PDF, aguarde...</div>
+    <p class="subtitle">Preencha os dados e clique em "Gerar PDF"</p>
 
     <form id="formPassagem">
+
+        <!-- ===== DADOS DA EMPRESA (EDITÁVEL) ===== -->
+        <h2 style="margin-top:20px;">🏢 Dados da Empresa</h2>
+        <div class="grid-2">
+            <div class="campo">
+                <label>Nome da empresa *</label>
+                <input type="text" id="empresa_nome" value="EMPRESA AUTO VIACACAO PROGRESSO SA" required>
+            </div>
+            <div class="campo">
+                <label>CNPJ *</label>
+                <input type="text" id="empresa_cnpj" value="10788677000190" required>
+            </div>
+            <div class="campo">
+                <label>Inscrição Estadual (IE)</label>
+                <input type="text" id="empresa_ie" value="014636590">
+            </div>
+            <div class="campo">
+                <label>Endereço *</label>
+                <input type="text" id="empresa_endereco" value="RUA OITENTA, 100, CURADO - JABOATAO DOS GUARARAPES - PE, PE" required>
+            </div>
+        </div>
 
         <!-- ===== DADOS DO PASSAGEIRO ===== -->
         <h2 style="margin-top:20px;">🧑 Dados do Passageiro</h2>
@@ -338,11 +357,11 @@
 
         <!-- ===== BOTÕES ===== -->
         <div class="acoes">
-            <button type="button" class="btn-gerar" id="btnGerar">📥 Baixar PDF</button>
+            <button type="button" class="btn-gerar" id="btnGerar">🖨️ Gerar PDF</button>
             <button type="reset" class="btn-limpar" id="btnLimpar">🗑️ Limpar</button>
         </div>
 
-        <p class="obs">⚠️ O PDF será baixado automaticamente.</p>
+        <p class="obs">⚠️ O PDF será aberto para impressão. Escolha "Salvar como PDF".</p>
     </form>
 </div>
 
@@ -354,10 +373,10 @@
         <small>AV DR CARDOSO DE MELO, 1608, VILA OLIMPIA - SAO PAULO - SP, SP</small>
     </div>
 
-    <div class="empresa">
-        EMPRESA AUTO VIACACAO PROGRESSO SA
-        <small>CNPJ: 10788677000190 IE: 014636590</small><br>
-        <small>RUA OITENTA, 100, CURADO - JABOATAO DOS GUARARAPES - PE, PE</small>
+    <div class="empresa" id="p-empresa">
+        <span id="p-empresa-nome">EMPRESA AUTO VIACACAO PROGRESSO SA</span>
+        <small>CNPJ: <span id="p-empresa-cnpj">10788677000190</span> IE: <span id="p-empresa-ie">014636590</span></small><br>
+        <small id="p-empresa-endereco">RUA OITENTA, 100, CURADO - JABOATAO DOS GUARARAPES - PE, PE</small>
     </div>
 
     <div class="bloco fundo-cinza" id="p-passageiro">
@@ -431,7 +450,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
-    // ===== GERAR CÓDIGOS AUTOMÁTICOS =====
+    // ===== GERAR CÓDIGOS =====
     function gerarCodigos() {
         document.getElementById('bpe').value = String(Math.floor(100000 + Math.random() * 900000));
         document.getElementById('bilhete').value = String(Math.floor(100000 + Math.random() * 900000));
@@ -446,10 +465,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const seg = String(agora.getSeconds()).padStart(2, '0');
         document.getElementById('data_autorizacao').value = `${dia}/${mes}/${ano} ${hora}:${min}:${seg}`;
         
-        gerarChaveAcesso();
+        gerarChave();
     }
 
-    function gerarChaveAcesso() {
+    function gerarChave() {
         let chave = '';
         for (let i = 0; i < 44; i++) {
             chave += Math.floor(Math.random() * 10);
@@ -460,7 +479,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('chave_acesso').value = chave;
     }
 
-    document.getElementById('gerarChave').addEventListener('click', gerarChaveAcesso);
+    document.getElementById('gerarChave').addEventListener('click', gerarChave);
 
     // ===== MÁSCARAS =====
     document.getElementById('cpf_passageiro').addEventListener('input', function() {
@@ -588,9 +607,10 @@ document.addEventListener('DOMContentLoaded', function() {
         campo.addEventListener('input', calcularValores);
     });
 
-    // ===== GERAR PDF =====
+    // ===== GERAR PDF (USANDO IMPRESSÃO) =====
     document.getElementById('btnGerar').addEventListener('click', function() {
-        const obrigatorios = ['nome_passageiro', 'cpf_passageiro', 'origem', 'destino', 'embarque_data', 'embarque_hora', 'poltrona'];
+        // Validar campos obrigatórios
+        const obrigatorios = ['empresa_nome', 'empresa_cnpj', 'empresa_endereco', 'nome_passageiro', 'cpf_passageiro', 'origem', 'destino', 'embarque_data', 'embarque_hora', 'poltrona'];
         let valido = true;
 
         obrigatorios.forEach(id => {
@@ -611,11 +631,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // ===== PREENCHER A PASSAGEM =====
+        // Dados da empresa
+        document.getElementById('p-empresa-nome').textContent = document.getElementById('empresa_nome').value.toUpperCase();
+        document.getElementById('p-empresa-cnpj').textContent = document.getElementById('empresa_cnpj').value;
+        document.getElementById('p-empresa-ie').textContent = document.getElementById('empresa_ie').value || '-';
+        document.getElementById('p-empresa-endereco').textContent = document.getElementById('empresa_endereco').value.toUpperCase();
+
+        // Dados do passageiro
         document.getElementById('p-nome').textContent = document.getElementById('nome_passageiro').value.toUpperCase();
         document.getElementById('p-cpf').textContent = document.getElementById('cpf_passageiro').value;
         document.getElementById('p-nascimento').textContent = document.getElementById('nascimento_passageiro').value || '-';
         document.getElementById('p-rg').textContent = document.getElementById('rg_passageiro').value || '-';
         
+        // Dados da viagem
         document.getElementById('p-origem').textContent = document.getElementById('origem').value.toUpperCase();
         document.getElementById('p-destino').textContent = document.getElementById('destino').value.toUpperCase();
         document.getElementById('p-embarque').textContent = document.getElementById('embarque_data').value + ', às ' + document.getElementById('embarque_hora').value;
@@ -623,6 +651,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('p-linha').textContent = document.getElementById('linha').value.toUpperCase() || '-';
         document.getElementById('p-tipo').textContent = document.getElementById('tipo_viagem').value;
 
+        // Valores
         document.getElementById('p-tarifa').textContent = document.getElementById('tarifa').value || '-';
         document.getElementById('p-taxa').textContent = document.getElementById('taxa_embarque').value || '-';
         document.getElementById('p-seguro').textContent = document.getElementById('seguro').value || '-';
@@ -634,6 +663,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('p-pago').textContent = document.getElementById('valor_pago').value || '-';
         document.getElementById('p-troco').textContent = document.getElementById('troco').value || '-';
 
+        // Códigos
         document.getElementById('p-bpe').textContent = document.getElementById('bpe').value || '-';
         document.getElementById('p-serie').textContent = document.getElementById('serie').value || '-';
         document.getElementById('p-bilhete').textContent = document.getElementById('bilhete').value || '-';
@@ -644,40 +674,16 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('p-icms').textContent = document.getElementById('icms').value || '-';
         document.getElementById('p-icms-aliquota').textContent = document.getElementById('icms_aliquota').value || '-';
 
-        // ===== GERAR PDF COM html2canvas + jsPDF =====
-        const btn = document.getElementById('btnGerar');
-        const loading = document.getElementById('loading');
-        btn.disabled = true;
-        loading.classList.add('ativo');
-
-        const element = document.getElementById('passagem');
-
-        html2canvas(element, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            width: 794, // 210mm em pixels (96dpi)
-            height: 1123 // 297mm em pixels
-        }).then(canvas => {
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-            
-            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-            
-            const nome = document.getElementById('nome_passageiro').value.replace(/\s/g, '_') || 'passagem';
-            pdf.save(`passagem_${nome}.pdf`);
-            
-            btn.disabled = false;
-            loading.classList.remove('ativo');
-        }).catch(error => {
-            console.error('Erro:', error);
-            alert('❌ Erro ao gerar PDF. Tente novamente.');
-            btn.disabled = false;
-            loading.classList.remove('ativo');
-        });
+        // ===== ABRIR IMPRESSÃO =====
+        const passagem = document.getElementById('passagem');
+        passagem.style.display = 'block';
+        
+        setTimeout(function() {
+            window.print();
+            setTimeout(function() {
+                passagem.style.display = 'none';
+            }, 500);
+        }, 300);
     });
 
     // ===== LIMPAR =====
@@ -685,7 +691,7 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         if (confirm('Tem certeza que deseja limpar todos os campos?')) {
             document.querySelectorAll('input, select').forEach(campo => {
-                if (!campo.hasAttribute('readonly') && campo.id !== 'serie' && campo.id !== 'icms_aliquota') {
+                if (!campo.hasAttribute('readonly') && campo.id !== 'serie' && campo.id !== 'icms_aliquota' && campo.id !== 'empresa_nome' && campo.id !== 'empresa_cnpj' && campo.id !== 'empresa_ie' && campo.id !== 'empresa_endereco') {
                     campo.value = '';
                     campo.style.borderColor = '';
                 }
@@ -696,6 +702,11 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('tipo_viagem').value = 'ORDINÁRIO';
             document.getElementById('forma_pagamento').value = 'PIX';
             document.getElementById('erro_cpf').textContent = '';
+            // Reset dos campos da empresa para os valores padrão
+            document.getElementById('empresa_nome').value = 'EMPRESA AUTO VIACACAO PROGRESSO SA';
+            document.getElementById('empresa_cnpj').value = '10788677000190';
+            document.getElementById('empresa_ie').value = '014636590';
+            document.getElementById('empresa_endereco').value = 'RUA OITENTA, 100, CURADO - JABOATAO DOS GUARARAPES - PE, PE';
             gerarCodigos();
             calcularValores();
         }
