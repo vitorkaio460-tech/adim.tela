@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎫 Gerador de Passagem</title>
+    
+    <!-- Biblioteca para gerar QR Code -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -157,6 +161,17 @@
             padding-top: 5px;
         }
         #passagem .fundo-cinza { background: #f5f5f5; }
+        #passagem .qr-code {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 5px 0;
+        }
+        #passagem .qr-code canvas {
+            border: 1px solid #ccc;
+            padding: 3px;
+            background: #fff;
+        }
 
         /* ===== REGRAS DE IMPRESSÃO ===== */
         @media print {
@@ -208,20 +223,26 @@
         <div class="grid-2">
             <div class="campo">
                 <label>Nome completo *</label>
-                <input type="text" id="nome_passageiro" placeholder="Ex: MARIA DA SILVA SANTOS" required>
+                <input type="text" id="nome_passageiro" placeholder="Ex: JOAINELIDE PERES DE GUSMAO" required>
             </div>
             <div class="campo">
                 <label>CPF *</label>
-                <input type="text" id="cpf_passageiro" placeholder="Ex: 123.456.789-00" maxlength="14" required>
+                <input type="text" id="cpf_passageiro" placeholder="Ex: 053.802.754-19" maxlength="14" required>
                 <span class="erro" id="erro_cpf"></span>
+            </div>
+            <div class="campo">
+                <label>Tipo de desconto</label>
+                <select id="tipo_desconto">
+                    <option value="NORMAL">NORMAL</option>
+                    <option value="ESTUDANTE">ESTUDANTE</option>
+                    <option value="IDOSO">IDOSO</option>
+                    <option value="PCD">PCD</option>
+                    <option value="GRATUIDADE">GRATUIDADE</option>
+                </select>
             </div>
             <div class="campo">
                 <label>Data de nascimento</label>
                 <input type="text" id="nascimento_passageiro" placeholder="Ex: 15/05/1985">
-            </div>
-            <div class="campo">
-                <label>Documento (RG)</label>
-                <input type="text" id="rg_passageiro" placeholder="Ex: 12.345.678-9">
             </div>
         </div>
 
@@ -275,6 +296,10 @@
                 <input type="text" id="tarifa" placeholder="Ex: 150,00" class="moeda">
             </div>
             <div class="campo">
+                <label>Pedágio (R$)</label>
+                <input type="text" id="pedagio" placeholder="Ex: 0,00" class="moeda" value="0,00">
+            </div>
+            <div class="campo">
                 <label>Taxa de embarque (R$)</label>
                 <input type="text" id="taxa_embarque" placeholder="Ex: 5,00" class="moeda" value="0,00">
             </div>
@@ -291,6 +316,14 @@
                 <input type="text" id="desconto" placeholder="Ex: 0,00" class="moeda" value="0,00">
             </div>
             <div class="campo">
+                <label>Valor total (R$)</label>
+                <input type="text" id="valor_total" readonly>
+            </div>
+            <div class="campo">
+                <label>Valor a pagar (R$)</label>
+                <input type="text" id="valor_pagar" readonly>
+            </div>
+            <div class="campo">
                 <label>Forma de pagamento</label>
                 <select id="forma_pagamento">
                     <option value="PIX">PIX</option>
@@ -298,14 +331,6 @@
                     <option value="CARTÃO DE CRÉDITO">CARTÃO DE CRÉDITO</option>
                     <option value="CARTÃO DE DÉBITO">CARTÃO DE DÉBITO</option>
                 </select>
-            </div>
-            <div class="campo">
-                <label>Valor total (R$)</label>
-                <input type="text" id="valor_total" readonly>
-            </div>
-            <div class="campo">
-                <label>Valor a pagar (R$)</label>
-                <input type="text" id="valor_pagar" readonly>
             </div>
             <div class="campo">
                 <label>Valor pago (R$)</label>
@@ -379,43 +404,69 @@
         <small id="p-empresa-endereco">RUA OITENTA, 100, CURADO - JABOATAO DOS GUARARAPES - PE, PE</small>
     </div>
 
-    <div class="bloco fundo-cinza" id="p-passageiro">
-        <table>
-            <tr><td class="label">Passageiro:</td><td class="dado" id="p-nome">-</td></tr>
-            <tr><td class="label">CPF:</td><td id="p-cpf">-</td></tr>
-            <tr><td class="label">Nascimento:</td><td id="p-nascimento">-</td></tr>
-            <tr><td class="label">RG:</td><td id="p-rg">-</td></tr>
-        </table>
-    </div>
-
     <div class="bloco" id="p-viagem">
         <table>
             <tr><td class="label">Origem:</td><td class="dado" id="p-origem">-</td></tr>
             <tr><td class="label">Destino:</td><td class="dado" id="p-destino">-</td></tr>
             <tr><td class="label">Embarque:</td><td class="dado" id="p-embarque">-</td></tr>
             <tr><td class="label">Poltrona:</td><td class="dado" id="p-poltrona">-</td></tr>
+            <tr><td class="label">Plataforma:</td><td id="p-plataforma">-</td></tr>
             <tr><td class="label">Linha:</td><td id="p-linha">-</td></tr>
-            <tr><td class="label">Tipo:</td><td id="p-tipo">-</td></tr>
+            <tr><td class="label">Tipo de viagem:</td><td id="p-tipo">-</td></tr>
+        </table>
+    </div>
+
+    <div class="bloco fundo-cinza" id="p-passageiro">
+        <table>
+            <tr><td class="label">Passageiro:</td><td class="dado" id="p-nome">-</td></tr>
+            <tr><td class="label">CPF:</td><td id="p-cpf">-</td></tr>
+            <tr><td class="label">Tipo de desconto:</td><td id="p-desconto-tipo">-</td></tr>
         </table>
     </div>
 
     <div class="bloco valores" id="p-valores">
         <table>
-            <tr><td>Tarifa</td><td id="p-tarifa">-</td><td>Pedágio</td></tr>
-            <tr><td>Taxa de embarque</td><td id="p-taxa">-</td><td>Seguro</td><td id="p-seguro">-</td></tr>
-            <tr><td>Outros</td><td id="p-outros">-</td><td>Total R$</td><td><strong id="p-total">-</strong></td><td>Desconto</td><td id="p-desconto">-</td></tr>
-            <tr><td colspan="6" style="font-weight:bold;font-size:12px;padding-top:5px;">Valor a pagar R$ <span id="p-pagar">-</span></td></tr>
-            <tr><td>Pagamento</td><td id="p-pagamento">-</td><td>Valor pago R$</td><td id="p-pago">-</td></tr>
-            <tr><td>Troco</td><td id="p-troco">-</td></tr>
+            <tr>
+                <td>Tarifa</td><td id="p-tarifa">-</td>
+                <td>Pedágio</td><td id="p-pedagio">-</td>
+            </tr>
+            <tr>
+                <td>Taxa de embarque</td><td id="p-taxa">-</td>
+                <td>Seguro obrigatório</td><td id="p-seguro">-</td>
+            </tr>
+            <tr>
+                <td>Outros</td><td id="p-outros">-</td>
+                <td>Valor Total R$</td><td><strong id="p-total">-</strong></td>
+                <td>Desconto</td><td id="p-desconto">-</td>
+            </tr>
+            <tr>
+                <td colspan="6" style="font-weight:bold;font-size:12px;padding-top:5px;">
+                    Valor a pagar R$ <span id="p-pagar">-</span>
+                </td>
+            </tr>
+            <tr>
+                <td>Forma de pagamento</td><td id="p-pagamento">-</td>
+                <td>Valor pago R$</td><td id="p-pago">-</td>
+            </tr>
+            <tr>
+                <td>Troco</td><td id="p-troco">-</td>
+            </tr>
         </table>
     </div>
 
     <div class="bloco" id="p-codigos">
         <strong>BP-e n°:</strong> <span id="p-bpe">-</span> | <strong>Série:</strong> <span id="p-serie">-</span> | <strong>Bilhete:</strong> <span id="p-bilhete">-</span><br>
-        <strong>Protocolo:</strong> <span id="p-protocolo">-</span><br>
-        <strong>Data autorização:</strong> <span id="p-data-autorizacao">-</span><br>
+        <strong>Protocolo de autorização:</strong> <span id="p-protocolo">-</span><br>
+        <strong>Data de autorização:</strong> <span id="p-data-autorizacao">-</span><br>
         <div class="chave">Chave de acesso:<br><span id="p-chave">-</span></div>
-        <div style="font-size:8px;text-align:center;margin-top:3px;">Consulte: https://dfe-portal.svrs.rs.gov.br</div>
+        <div style="font-size:8px;text-align:center;margin-top:3px;">
+            Consulte pela chave de acesso em: https://dfe-portal.svrs.rs.gov.br
+        </div>
+    </div>
+
+    <!-- ===== QR CODE ===== -->
+    <div class="qr-code" id="qr-code-container">
+        <div id="qr-code"></div>
     </div>
 
     <div class="tributos" id="p-tributos">
@@ -423,28 +474,67 @@
         ICMS: <span id="p-icms">-</span> (<span id="p-icms-aliquota">-</span>)
     </div>
 
+    <!-- ===== DIREITOS COMPLETOS (IGUAL AO PDF) ===== -->
     <div class="direitos">
-        <div class="titulo">ART. 188. Direitos dos usuários:</div>
-        I - receber serviço adequado:<br>
-        II - ser transportado com pontualidade, segurança, higiene e conforto:<br>
-        III - obter e utilizar o serviço com liberdade de escolha:<br>
-        IV - receber informações sobre horários, tempo de viagem, localidades, preço:<br>
-        V - receber o serviço conforme especificado no bilhete:<br>
-        VI - receber serviço acessório conforme contrato:<br>
-        VII - transportar bagagens gratuitamente:<br>
-        VIII - ser atendido com urbanidade:<br>
-        IX - receber auxílio no embarque/desembarque (pessoas com deficiência):<br>
-        X - receber comprovantes das bagagens despachadas:<br>
-        XI - ser indenizado por extravio/dano de bagagem:<br>
-        XII - receber assistência em caso de incidente/acidente/assalto:<br>
-        XIII - receber assistência em caso de atraso/cancelamento:<br>
-        XIV - transportar criança de até 6 anos sem pagamento:<br>
-        XV - receber indenização do seguro:<br>
-        XVI - utilizar canais de comunicação para reclamações:<br>
-        XVII - remarcar, transferir ou ter o bilhete reembolsado.
+        <div class="titulo">RESOLUÇÃO ANTT N° 6.033, DE 21 DE DEZEMBRO DE 2023</div>
+        
+        <div style="margin-top:5px;">
+            <span style="font-weight:bold;">Art. 188.</span> São direitos dos usuários dos serviços regulares de transporte rodoviário coletivo interestadual de passageiros:
+        </div>
+        
+        I - receber serviço adequado;<br>
+        II - ser transportado com pontualidade, segurança, higiene e conforto, do início ao término da viagem;<br>
+        III - obter e utilizar o serviço com liberdade de escolha;<br>
+        IV - receber da autorizatória informações sobre as características dos serviços oferecidos, tais como horários, tempo de viagem, localidades atendidas, preço de passageiros, entre outras;<br>
+        V - receber da autorizatória o serviço de transporte conforme especificado no bilhete de passageiro, incluindo a classe e o número da poltrona adquirida;<br>
+        VI - receber da autorizatória, quando for o caso, o serviço acessório conforme estabelecido em contrato;<br>
+        VII - transportar bagagens gratuitamente no limite da franquia estabelecida;<br>
+        VIII - ser atendido com urbanidade pelos agentes da autorizatória e da fiscalização, devidamente indicados;<br>
+        IX - receber auxílio no embarque e desembarque, bem como tratamento prioritário e diferenciado, em se tratando de pessoas com deficiência ou mobilidade reduzida, de forma a garantir condição para utilização do serviço de transporte com segurança e autonomia, total ou assistida;<br>
+        X - receber os comprovantes das bagagens despachadas;<br>
+        XI - ser indenizado por extravio ou dano da bagagem despachada, no prazo de até 30 (trinta) dias, contados da data da reclamação, conforme procedimento estabelecido pela autorizatória;<br>
+        XII - receber da autorizatória, em caso de incidente, acidente ou assalto, imediata e adequada assistência;<br>
+        XIII - receber da autorizatória, em caso de atraso, cancelamento ou interrupção da viagem, ou nas demais situações previstas nesta Resolução, a adequada assistência;<br>
+        XIV - transportar, sem pagamento, uma criança de até 6 (seis) anos incompletos, por responsável, desde que não ocupe poltrona, observadas as disposições legais e regulamentares aplicáveis ao transporte de menores;<br>
+        XV - receber indenização do seguro de responsabilidade civil quando devido;<br>
+        XVI - utilizar os canais de comunicação da autorizatória ou do Poder Público para obter informações para a defesa de seus direitos ou para reclamar da prestação inadequada do serviço; e<br>
+        XVII - remarcar, transferir ou ter o bilhete de passageiro reembolsado conforme as regras estabelecidas no bilhete e na legislação;
+
+        <div style="margin-top:5px;">
+            <span style="font-weight:bold;">§ 1º</span> Deverá constar no bilhete de gratuidade a informação da obrigatoriedade de o beneficiário de gratuidade comparecer ao ponto de embarque até 30 (trinta) minutos antes da hora marcada para o início da sua viagem e que o não comparecimento acarretará a perda do benefício.
+        </div>
+
+        <div style="margin-top:3px;">
+            <span style="font-weight:bold;">§ 2º</span> Na hipótese de aquisição por meio virtual de bilhetes destinados a beneficiários de gratuidades e descontos previstos em lei, a autorizatória poderá optar por exigir a comprovação do cumprimento dos requisitos para o usufruto do benefício no ponto de embarque, no prazo previsto no § 1º.
+        </div>
+
+        <div style="margin-top:3px;">
+            <span style="font-weight:bold;">Parágrafo único.</span> Salvo disposição em contrário, os direitos e os deveres dos usuários dos serviços se aplicam também aos beneficiários de gratuidades e descontos previstos em lei.
+        </div>
+
+        <div style="margin-top:8px;">
+            <span style="font-weight:bold;">Art. 189.</span> São deveres dos usuários dos serviços regulares de transporte rodoviário coletivo interestadual de passageiros:
+        </div>
+
+        I - observar as regras aplicáveis ao bilhete de passageiro no momento da sua aquisição;<br>
+        II - observar as informações descritas no bilhete de passageiro adquirido;<br>
+        III - comparecer ao local de embarque no horário estabelecido, portando o bilhete de passageiro;<br>
+        IV - apresentar documento de identificação ao agente da autorizatória ou aos agentes da fiscalização no momento do embarque e, quando solicitado, em qualquer momento durante a prestação do serviço, inclusive no desembarque;<br>
+        V - comprovar que é beneficiário de gratuidade ou desconto estabelecido em lei, quando for o caso;<br>
+        VI - observar as restrições de bagagem estabelecidas pela ANTT e pela autorizatória;<br>
+        VII - observar as regras e procedimentos relativos aos serviços acessórios contratados estabelecidos pela autorizatória e pela legislação vigente, quando for o caso;<br>
+        VIII - informar à autorizatória, com antecedência mínima de 24 (vinte e quatro) horas do horário de partida do ponto inicial do serviço, caso deseje transportar equipamentos ou bagagens que extrapoliem os limites máximos de peso, volume e dimensão estabelecidos na franquia mínima ou que necessitem de cuidados especiais para o transporte;<br>
+        IX - seguir as regras e orientações de segurança estabelecidas pela autorizatória e pela legislação vigente;<br>
+        X - não portar armas sem autorização legal;<br>
+        XI - fazer uso do cinto de segurança durante toda a viagem;<br>
+        XII - manter comportamento adequado durante o embarque e ao longo de toda a prestação do serviço, não comprometendo a segurança, a higiene e o conforto do serviço, bem como a tranquilidade dos demais passageiros;<br>
+        XIII - não comparecer ao embarque sob efeito de bebida alcoólica, não fazer uso de bebida alcoólica ao longo da viagem, salvo se expressamente permitido pela autorizatória, e não usar produtos fumígenos no interior do veículo;<br>
+        XIV - proceder à abertura de bagagens, quando solicitado pelos prepostos da autorizatória ou pelos agentes de fiscalização;<br>
+        XV - zelar pela conservação dos equipamentos por meio dos quais lhes são prestados os serviços; e<br>
+        XVI - prestar informações relacionadas ao serviço de transporte aos agentes de fiscalização, procedendo com urbanidade e boa-fé.
     </div>
 
-    <div class="rodape">Documento emitido eletronicamente. Consulte no site da ANTT.</div>
+    <div class="rodape">Documento emitido eletronicamente. Consulte sua autenticidade no site da ANTT.</div>
 </div>
 
 <script>
@@ -587,12 +677,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // ===== CALCULAR VALORES =====
     function calcularValores() {
         const tarifa = parseFloat(document.getElementById('tarifa').value.replace('.', '').replace(',', '.')) || 0;
+        const pedagio = parseFloat(document.getElementById('pedagio').value.replace('.', '').replace(',', '.')) || 0;
         const taxa = parseFloat(document.getElementById('taxa_embarque').value.replace('.', '').replace(',', '.')) || 0;
         const seguro = parseFloat(document.getElementById('seguro').value.replace('.', '').replace(',', '.')) || 0;
         const outros = parseFloat(document.getElementById('outros').value.replace('.', '').replace(',', '.')) || 0;
         const desconto = parseFloat(document.getElementById('desconto').value.replace('.', '').replace(',', '.')) || 0;
 
-        const total = tarifa + taxa + seguro + outros;
+        const total = tarifa + pedagio + taxa + seguro + outros;
         const aPagar = total - desconto;
 
         document.getElementById('valor_total').value = total.toFixed(2).replace('.', ',');
@@ -603,9 +694,28 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('troco').value = troco > 0 ? troco.toFixed(2).replace('.', ',') : '0,00';
     }
 
-    document.querySelectorAll('#tarifa, #taxa_embarque, #seguro, #outros, #desconto, #valor_pago').forEach(campo => {
+    document.querySelectorAll('#tarifa, #pedagio, #taxa_embarque, #seguro, #outros, #desconto, #valor_pago').forEach(campo => {
         campo.addEventListener('input', calcularValores);
     });
+
+    // ===== GERAR QR CODE =====
+    function gerarQRCode() {
+        const container = document.getElementById('qr-code');
+        container.innerHTML = '';
+        
+        // Pega a chave de acesso para gerar o QR Code
+        const chave = document.getElementById('chave_acesso').value || 'CHAVE_NAO_INFORMADA';
+        
+        // Cria um QR Code com a chave
+        new QRCode(container, {
+            text: chave,
+            width: 80,
+            height: 80,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    }
 
     // ===== GERAR PDF (USANDO IMPRESSÃO) =====
     document.getElementById('btnGerar').addEventListener('click', function() {
@@ -637,22 +747,23 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('p-empresa-ie').textContent = document.getElementById('empresa_ie').value || '-';
         document.getElementById('p-empresa-endereco').textContent = document.getElementById('empresa_endereco').value.toUpperCase();
 
-        // Dados do passageiro
-        document.getElementById('p-nome').textContent = document.getElementById('nome_passageiro').value.toUpperCase();
-        document.getElementById('p-cpf').textContent = document.getElementById('cpf_passageiro').value;
-        document.getElementById('p-nascimento').textContent = document.getElementById('nascimento_passageiro').value || '-';
-        document.getElementById('p-rg').textContent = document.getElementById('rg_passageiro').value || '-';
-        
         // Dados da viagem
         document.getElementById('p-origem').textContent = document.getElementById('origem').value.toUpperCase();
         document.getElementById('p-destino').textContent = document.getElementById('destino').value.toUpperCase();
         document.getElementById('p-embarque').textContent = document.getElementById('embarque_data').value + ', às ' + document.getElementById('embarque_hora').value;
-        document.getElementById('p-poltrona').textContent = document.getElementById('poltrona').value + ' Plataforma: ' + (document.getElementById('plataforma').value || '0');
+        document.getElementById('p-poltrona').textContent = document.getElementById('poltrona').value;
+        document.getElementById('p-plataforma').textContent = document.getElementById('plataforma').value || '0';
         document.getElementById('p-linha').textContent = document.getElementById('linha').value.toUpperCase() || '-';
         document.getElementById('p-tipo').textContent = document.getElementById('tipo_viagem').value;
 
+        // Dados do passageiro
+        document.getElementById('p-nome').textContent = document.getElementById('nome_passageiro').value.toUpperCase();
+        document.getElementById('p-cpf').textContent = document.getElementById('cpf_passageiro').value;
+        document.getElementById('p-desconto-tipo').textContent = document.getElementById('tipo_desconto').value;
+
         // Valores
         document.getElementById('p-tarifa').textContent = document.getElementById('tarifa').value || '-';
+        document.getElementById('p-pedagio').textContent = document.getElementById('pedagio').value || '-';
         document.getElementById('p-taxa').textContent = document.getElementById('taxa_embarque').value || '-';
         document.getElementById('p-seguro').textContent = document.getElementById('seguro').value || '-';
         document.getElementById('p-outros').textContent = document.getElementById('outros').value || '-';
@@ -674,6 +785,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('p-icms').textContent = document.getElementById('icms').value || '-';
         document.getElementById('p-icms-aliquota').textContent = document.getElementById('icms_aliquota').value || '-';
 
+        // ===== GERAR QR CODE =====
+        gerarQRCode();
+
         // ===== ABRIR IMPRESSÃO =====
         const passagem = document.getElementById('passagem');
         passagem.style.display = 'block';
@@ -691,7 +805,13 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         if (confirm('Tem certeza que deseja limpar todos os campos?')) {
             document.querySelectorAll('input, select').forEach(campo => {
-                if (!campo.hasAttribute('readonly') && campo.id !== 'serie' && campo.id !== 'icms_aliquota' && campo.id !== 'empresa_nome' && campo.id !== 'empresa_cnpj' && campo.id !== 'empresa_ie' && campo.id !== 'empresa_endereco') {
+                if (!campo.hasAttribute('readonly') && 
+                    campo.id !== 'serie' && 
+                    campo.id !== 'icms_aliquota' && 
+                    campo.id !== 'empresa_nome' && 
+                    campo.id !== 'empresa_cnpj' && 
+                    campo.id !== 'empresa_ie' && 
+                    campo.id !== 'empresa_endereco') {
                     campo.value = '';
                     campo.style.borderColor = '';
                 }
@@ -701,6 +821,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('icms_aliquota').value = '20,00%';
             document.getElementById('tipo_viagem').value = 'ORDINÁRIO';
             document.getElementById('forma_pagamento').value = 'PIX';
+            document.getElementById('tipo_desconto').value = 'NORMAL';
             document.getElementById('erro_cpf').textContent = '';
             // Reset dos campos da empresa para os valores padrão
             document.getElementById('empresa_nome').value = 'EMPRESA AUTO VIACACAO PROGRESSO SA';
