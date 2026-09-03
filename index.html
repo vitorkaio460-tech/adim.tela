@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎫 Gerador de Passagem</title>
+    <title>Gerador de Passagem</title>
     
     <!-- Biblioteca para gerar QR Code -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -23,8 +23,7 @@
             border-radius: 16px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        h1 { text-align: center; color: #1a1a2e; margin-bottom: 5px; }
-        .subtitle { text-align: center; color: #666; margin-bottom: 25px; }
+        .no-print { }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
         .campo { display: flex; flex-direction: column; }
@@ -192,8 +191,7 @@
 <body>
 
 <div class="container no-print">
-    <h1>🚌 Gerador de Passagem</h1>
-    <p class="subtitle">Preencha os dados e clique em "Gerar PDF"</p>
+    <!-- TÍTULO REMOVIDO -->
 
     <form id="formPassagem">
 
@@ -703,10 +701,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const container = document.getElementById('qr-code');
         container.innerHTML = '';
         
-        // Pega a chave de acesso para gerar o QR Code
         const chave = document.getElementById('chave_acesso').value || 'CHAVE_NAO_INFORMADA';
         
-        // Cria um QR Code com a chave
         new QRCode(container, {
             text: chave,
             width: 80,
@@ -719,7 +715,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ===== GERAR PDF (USANDO IMPRESSÃO) =====
     document.getElementById('btnGerar').addEventListener('click', function() {
-        // Validar campos obrigatórios
         const obrigatorios = ['empresa_nome', 'empresa_cnpj', 'empresa_endereco', 'nome_passageiro', 'cpf_passageiro', 'origem', 'destino', 'embarque_data', 'embarque_hora', 'poltrona'];
         let valido = true;
 
@@ -741,13 +736,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // ===== PREENCHER A PASSAGEM =====
-        // Dados da empresa
         document.getElementById('p-empresa-nome').textContent = document.getElementById('empresa_nome').value.toUpperCase();
         document.getElementById('p-empresa-cnpj').textContent = document.getElementById('empresa_cnpj').value;
         document.getElementById('p-empresa-ie').textContent = document.getElementById('empresa_ie').value || '-';
         document.getElementById('p-empresa-endereco').textContent = document.getElementById('empresa_endereco').value.toUpperCase();
 
-        // Dados da viagem
         document.getElementById('p-origem').textContent = document.getElementById('origem').value.toUpperCase();
         document.getElementById('p-destino').textContent = document.getElementById('destino').value.toUpperCase();
         document.getElementById('p-embarque').textContent = document.getElementById('embarque_data').value + ', às ' + document.getElementById('embarque_hora').value;
@@ -756,12 +749,10 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('p-linha').textContent = document.getElementById('linha').value.toUpperCase() || '-';
         document.getElementById('p-tipo').textContent = document.getElementById('tipo_viagem').value;
 
-        // Dados do passageiro
         document.getElementById('p-nome').textContent = document.getElementById('nome_passageiro').value.toUpperCase();
         document.getElementById('p-cpf').textContent = document.getElementById('cpf_passageiro').value;
         document.getElementById('p-desconto-tipo').textContent = document.getElementById('tipo_desconto').value;
 
-        // Valores
         document.getElementById('p-tarifa').textContent = document.getElementById('tarifa').value || '-';
         document.getElementById('p-pedagio').textContent = document.getElementById('pedagio').value || '-';
         document.getElementById('p-taxa').textContent = document.getElementById('taxa_embarque').value || '-';
@@ -774,7 +765,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('p-pago').textContent = document.getElementById('valor_pago').value || '-';
         document.getElementById('p-troco').textContent = document.getElementById('troco').value || '-';
 
-        // Códigos
         document.getElementById('p-bpe').textContent = document.getElementById('bpe').value || '-';
         document.getElementById('p-serie').textContent = document.getElementById('serie').value || '-';
         document.getElementById('p-bilhete').textContent = document.getElementById('bilhete').value || '-';
@@ -823,7 +813,6 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('forma_pagamento').value = 'PIX';
             document.getElementById('tipo_desconto').value = 'NORMAL';
             document.getElementById('erro_cpf').textContent = '';
-            // Reset dos campos da empresa para os valores padrão
             document.getElementById('empresa_nome').value = 'EMPRESA AUTO VIACACAO PROGRESSO SA';
             document.getElementById('empresa_cnpj').value = '10788677000190';
             document.getElementById('empresa_ie').value = '014636590';
