@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎫 Gerador de Passagem</title>
+    
+    <!-- Biblioteca jsPDF para gerar PDF diretamente -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #eef1f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { text-align: center; color: #1a1a2e; margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 25px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+        .campo { display: flex; flex-direction: column; }
+        .campo label { font-weight: 600; font-size: 13px; color: #333; margin-bottom: 4px; }
+        .campo input, .campo select {
+            padding: 9px 12px;
+            border: 1px solid #d0d4da;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #fafbfc;
+        }
+        .campo input:focus, .campo select:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.12);
+        }
+        .campo input[readonly] { background: #e9ecef; cursor: not-allowed; }
+        .btn-gerar {
+            display: block;
+            width: 100%;
+            max-width: 350px;
+            margin: 25px auto 10px;
+            padding: 14px;
+            background: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-gerar:hover { background: #1e7e34; transform: scale(1.02); }
+        .btn-gerar:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-limpar {
+            padding: 14px 30px;
+            background: #6c757d;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .btn-limpar:hover { background: #5a6268; }
+        .acoes { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .obs { text-align: center; font-size: 12px; color: #888; margin-top: 15px; }
+        .erro { font-size: 12px; color: #dc3545; min-height: 18px; }
+        .full-width { grid-column: 1 / -1; }
+        .btn-small {
+            padding: 6px 14px;
+            background: #6c757d;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 5px;
+            align-self: flex-start;
+        }
+        .btn-small:hover { background: #495057; }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            font-size: 16px;
+            color: #28a745;
+        }
+        .loading.ativo { display: block; }
+        
+        @media (max-width: 700px) {
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+        }
+
+        /* ===== ESTILOS DA PASSAGEM (PARA CAPTURA) ===== */
+        #passagem {
+            position: absolute;
+            left: -9999px;
+            top: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 10px;
+            padding: 20px;
+            width: 210mm;
+            background: #fff;
+        }
+        #passagem .header {
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+        }
+        #passagem .header small { font-weight: normal; font-size: 9px; }
+        #passagem .empresa {
+            font-weight: bold;
+            font-size: 11px;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+        #passagem .empresa small { font-weight: normal; font-size: 9px; }
+        #passagem .bloco {
+            border: 1px solid #000;
+            padding: 6px 8px;
+            margin: 8px 0;
+        }
+        #passagem .bloco table { width: 100%; }
+        #passagem .bloco td { padding: 2px 4px; }
+        #passagem .label { font-weight: bold; width: 120px; }
+        #passagem .dado { font-weight: bold; }
+        #passagem .valores td { padding: 2px 8px 2px 0; }
+        #passagem .chave {
+            font-weight: bold;
+            font-size: 11px;
+            text-align: center;
+            margin-top: 4px;
+            letter-spacing: 1px;
+        }
+        #passagem .tributos {
+            border: 1px solid #000;
+            padding: 4px 8px;
+            margin: 8px 0;
+            font-size: 9px;
+            text-align: center;
+            background: #f9f9f9;
+        }
+        #passagem .direitos {
+            font-size: 7px;
+            line-height: 1.3;
+            margin-top: 8px;
+            text-align: justify;
+        }
+        #passagem .direitos .titulo {
+            font-weight: bold;
+            font-size: 8px;
+            text-align: center;
+            margin-bottom: 3px;
+        }
+        #passagem .rodape {
+            text-align: center;
+            font-size: 7px;
+            margin-top: 8px;
+            border-top: 1px solid #ccc;
+            padding-top: 5px;
+        }
+        #passagem .fundo-cinza { background: #f5f5f5; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🚌 Gerador de Passagem</h1>
+    <p class="subtitle">Preencha os dados e clique em "Baixar PDF"</p>
+
+    <div class="loading" id="loading">⏳ Gerando PDF, aguarde...</div>
+
+    <form id="formPassagem">
+
+        <!-- ===== DADOS DO PASSAGEIRO ===== -->
+        <h2 style="margin-top:20px;">🧑 Dados do Passageiro</h2>
+        <div class="grid-2">
+            <div class="campo">
+                <label>Nome completo *</label>
+                <input type="text" id="nome_passageiro" placeholder="Ex: MARIA DA SILVA SANTOS" required>
+            </div>
+            <div class="campo">
+                <label>CPF *</label>
+                <input type="text" id="cpf_passageiro" placeholder="Ex: 123.456.789-00" maxlength="14" required>
+                <span class="erro" id="erro_cpf"></span>
+            </div>
+            <div class="campo">
+                <label>Data de nascimento</label>
+                <input type="text" id="nascimento_passageiro" placeholder="Ex: 15/05/1985">
+            </div>
+            <div class="campo">
+                <label>Documento (RG)</label>
+                <input type="text" id="rg_passageiro" placeholder="Ex: 12.345.678-9">
+            </div>
+        </div>
+
+        <!-- ===== DADOS DA VIAGEM ===== -->
+        <h2 style="margin-top:20px;">📍 Dados da Viagem</h2>
+        <div class="grid-3">
+            <div class="campo">
+                <label>Origem *</label>
+                <input type="text" id="origem" placeholder="Ex: PARNAMIRIM, RN" required>
+            </div>
+            <div class="campo">
+                <label>Destino *</label>
+                <input type="text" id="destino" placeholder="Ex: CAMPINA GRANDE, PB" required>
+            </div>
+            <div class="campo">
+                <label>Data de embarque *</label>
+                <input type="text" id="embarque_data" placeholder="Ex: 29/11/2025" required>
+            </div>
+            <div class="campo">
+                <label>Hora de embarque *</label>
+                <input type="text" id="embarque_hora" placeholder="Ex: 13:00" required>
+            </div>
+            <div class="campo">
+                <label>Poltrona *</label>
+                <input type="number" id="poltrona" placeholder="Ex: 35" min="1" max="60" required>
+            </div>
+            <div class="campo">
+                <label>Plataforma</label>
+                <input type="number" id="plataforma" placeholder="Ex: 0" value="0">
+            </div>
+            <div class="campo">
+                <label>Linha</label>
+                <input type="text" id="linha" placeholder="Ex: CARUARU(PE) - NATAL(IN)">
+            </div>
+            <div class="campo">
+                <label>Tipo de viagem</label>
+                <select id="tipo_viagem">
+                    <option value="ORDINÁRIO">ORDINÁRIO</option>
+                    <option value="EXECUTIVO">EXECUTIVO</option>
+                    <option value="SEMI-LEITO">SEMI-LEITO</option>
+                    <option value="LEITO">LEITO</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- ===== VALORES ===== -->
+        <h2 style="margin-top:20px;">💰 Valores</h2>
+        <div class="grid-3">
+            <div class="campo">
+                <label>Tarifa (R$)</label>
+                <input type="text" id="tarifa" placeholder="Ex: 150,00" class="moeda">
+            </div>
+            <div class="campo">
+                <label>Taxa de embarque (R$)</label>
+                <input type="text" id="taxa_embarque" placeholder="Ex: 5,00" class="moeda" value="0,00">
+            </div>
+            <div class="campo">
+                <label>Seguro obrigatório (R$)</label>
+                <input type="text" id="seguro" placeholder="Ex: 3,50" class="moeda" value="0,00">
+            </div>
+            <div class="campo">
+                <label>Outros (R$)</label>
+                <input type="text" id="outros" placeholder="Ex: 0,00" class="moeda" value="0,00">
+            </div>
+            <div class="campo">
+                <label>Desconto (R$)</label>
+                <input type="text" id="desconto" placeholder="Ex: 0,00" class="moeda" value="0,00">
+            </div>
+            <div class="campo">
+                <label>Forma de pagamento</label>
+                <select id="forma_pagamento">
+                    <option value="PIX">PIX</option>
+                    <option value="DINHEIRO">DINHEIRO</option>
+                    <option value="CARTÃO DE CRÉDITO">CARTÃO DE CRÉDITO</option>
+                    <option value="CARTÃO DE DÉBITO">CARTÃO DE DÉBITO</option>
+                </select>
+            </div>
+            <div class="campo">
+                <label>Valor total (R$)</label>
+                <input type="text" id="valor_total" readonly>
+            </div>
+            <div class="campo">
+                <label>Valor a pagar (R$)</label>
+                <input type="text" id="valor_pagar" readonly>
+            </div>
+            <div class="campo">
+                <label>Valor pago (R$)</label>
+                <input type="text" id="valor_pago" placeholder="Ex: 158,50" class="moeda">
+            </div>
+            <div class="campo">
+                <label>Troco (R$)</label>
+                <input type="text" id="troco" readonly>
+            </div>
+        </div>
+
+        <!-- ===== CÓDIGOS ===== -->
+        <h2 style="margin-top:20px;">🔢 Códigos</h2>
+        <div class="grid-3">
+            <div class="campo">
+                <label>BP-e n°</label>
+                <input type="text" id="bpe">
+            </div>
+            <div class="campo">
+                <label>Série</label>
+                <input type="text" id="serie" value="3">
+            </div>
+            <div class="campo">
+                <label>Bilhete</label>
+                <input type="text" id="bilhete">
+            </div>
+            <div class="campo">
+                <label>Protocolo</label>
+                <input type="text" id="protocolo">
+            </div>
+            <div class="campo">
+                <label>Data autorização</label>
+                <input type="text" id="data_autorizacao">
+            </div>
+            <div class="campo full-width">
+                <label>Chave de acesso</label>
+                <input type="text" id="chave_acesso" style="width:100%;">
+                <button type="button" id="gerarChave" class="btn-small">🔄 Gerar nova chave</button>
+            </div>
+            <div class="campo">
+                <label>ICMS (R$)</label>
+                <input type="text" id="icms" placeholder="Ex: 16,40" class="moeda">
+            </div>
+            <div class="campo">
+                <label>Alíquota ICMS</label>
+                <input type="text" id="icms_aliquota" placeholder="Ex: 20,00%" value="20,00%">
+            </div>
+        </div>
+
+        <!-- ===== BOTÕES ===== -->
+        <div class="acoes">
+            <button type="button" class="btn-gerar" id="btnGerar">📥 Baixar PDF</button>
+            <button type="reset" class="btn-limpar" id="btnLimpar">🗑️ Limpar</button>
+        </div>
+
+        <p class="obs">⚠️ O PDF será baixado automaticamente.</p>
+    </form>
+</div>
+
+<!-- ===== PASSAGEM (ESCONDIDA) ===== -->
+<div id="passagem">
+    <div class="header">
+        BUS SERVICOS DE AGENDAMENTO S.A.<br>
+        <small>CNPJ: 17289475000142 SAC: 08007669000</small><br>
+        <small>AV DR CARDOSO DE MELO, 1608, VILA OLIMPIA - SAO PAULO - SP, SP</small>
+    </div>
+
+    <div class="empresa">
+        EMPRESA AUTO VIACACAO PROGRESSO SA
+        <small>CNPJ: 10788677000190 IE: 014636590</small><br>
+        <small>RUA OITENTA, 100, CURADO - JABOATAO DOS GUARARAPES - PE, PE</small>
+    </div>
+
+    <div class="bloco fundo-cinza" id="p-passageiro">
+        <table>
+            <tr><td class="label">Passageiro:</td><td class="dado" id="p-nome">-</td></tr>
+            <tr><td class="label">CPF:</td><td id="p-cpf">-</td></tr>
+            <tr><td class="label">Nascimento:</td><td id="p-nascimento">-</td></tr>
+            <tr><td class="label">RG:</td><td id="p-rg">-</td></tr>
+        </table>
+    </div>
+
+    <div class="bloco" id="p-viagem">
+        <table>
+            <tr><td class="label">Origem:</td><td class="dado" id="p-origem">-</td></tr>
+            <tr><td class="label">Destino:</td><td class="dado" id="p-destino">-</td></tr>
+            <tr><td class="label">Embarque:</td><td class="dado" id="p-embarque">-</td></tr>
+            <tr><td class="label">Poltrona:</td><td class="dado" id="p-poltrona">-</td></tr>
+            <tr><td class="label">Linha:</td><td id="p-linha">-</td></tr>
+            <tr><td class="label">Tipo:</td><td id="p-tipo">-</td></tr>
+        </table>
+    </div>
+
+    <div class="bloco valores" id="p-valores">
+        <table>
+            <tr><td>Tarifa</td><td id="p-tarifa">-</td><td>Pedágio</td></tr>
+            <tr><td>Taxa de embarque</td><td id="p-taxa">-</td><td>Seguro</td><td id="p-seguro">-</td></tr>
+            <tr><td>Outros</td><td id="p-outros">-</td><td>Total R$</td><td><strong id="p-total">-</strong></td><td>Desconto</td><td id="p-desconto">-</td></tr>
+            <tr><td colspan="6" style="font-weight:bold;font-size:12px;padding-top:5px;">Valor a pagar R$ <span id="p-pagar">-</span></td></tr>
+            <tr><td>Pagamento</td><td id="p-pagamento">-</td><td>Valor pago R$</td><td id="p-pago">-</td></tr>
+            <tr><td>Troco</td><td id="p-troco">-</td></tr>
+        </table>
+    </div>
+
+    <div class="bloco" id="p-codigos">
+        <strong>BP-e n°:</strong> <span id="p-bpe">-</span> | <strong>Série:</strong> <span id="p-serie">-</span> | <strong>Bilhete:</strong> <span id="p-bilhete">-</span><br>
+        <strong>Protocolo:</strong> <span id="p-protocolo">-</span><br>
+        <strong>Data autorização:</strong> <span id="p-data-autorizacao">-</span><br>
+        <div class="chave">Chave de acesso:<br><span id="p-chave">-</span></div>
+        <div style="font-size:8px;text-align:center;margin-top:3px;">Consulte: https://dfe-portal.svrs.rs.gov.br</div>
+    </div>
+
+    <div class="tributos" id="p-tributos">
+        Tributos Totais Incidentes (Lei Federal 12.741/2012)<br>
+        ICMS: <span id="p-icms">-</span> (<span id="p-icms-aliquota">-</span>)
+    </div>
+
+    <div class="direitos">
+        <div class="titulo">ART. 188. Direitos dos usuários:</div>
+        I - receber serviço adequado:<br>
+        II - ser transportado com pontualidade, segurança, higiene e conforto:<br>
+        III - obter e utilizar o serviço com liberdade de escolha:<br>
+        IV - receber informações sobre horários, tempo de viagem, localidades, preço:<br>
+        V - receber o serviço conforme especificado no bilhete:<br>
+        VI - receber serviço acessório conforme contrato:<br>
+        VII - transportar bagagens gratuitamente:<br>
+        VIII - ser atendido com urbanidade:<br>
+        IX - receber auxílio no embarque/desembarque (pessoas com deficiência):<br>
+        X - receber comprovantes das bagagens despachadas:<br>
+        XI - ser indenizado por extravio/dano de bagagem:<br>
+        XII - receber assistência em caso de incidente/acidente/assalto:<br>
+        XIII - receber assistência em caso de atraso/cancelamento:<br>
+        XIV - transportar criança de até 6 anos sem pagamento:<br>
+        XV - receber indenização do seguro:<br>
+        XVI - utilizar canais de comunicação para reclamações:<br>
+        XVII - remarcar, transferir ou ter o bilhete reembolsado.
+    </div>
+
+    <div class="rodape">Documento emitido eletronicamente. Consulte no site da ANTT.</div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    // ===== GERAR CÓDIGOS AUTOMÁTICOS =====
+    function gerarCodigos() {
+        document.getElementById('bpe').value = String(Math.floor(100000 + Math.random() * 900000));
+        document.getElementById('bilhete').value = String(Math.floor(100000 + Math.random() * 900000));
+        document.getElementById('protocolo').value = String(Math.floor(100000000000000 + Math.random() * 900000000000000));
+        
+        const agora = new Date();
+        const dia = String(agora.getDate()).padStart(2, '0');
+        const mes = String(agora.getMonth() + 1).padStart(2, '0');
+        const ano = agora.getFullYear();
+        const hora = String(agora.getHours()).padStart(2, '0');
+        const min = String(agora.getMinutes()).padStart(2, '0');
+        const seg = String(agora.getSeconds()).padStart(2, '0');
+        document.getElementById('data_autorizacao').value = `${dia}/${mes}/${ano} ${hora}:${min}:${seg}`;
+        
+        gerarChaveAcesso();
+    }
+
+    function gerarChaveAcesso() {
+        let chave = '';
+        for (let i = 0; i < 44; i++) {
+            chave += Math.floor(Math.random() * 10);
+            if (i === 3 || i === 7 || i === 11 || i === 15 || i === 19 || i === 23 || i === 27 || i === 31 || i === 35 || i === 39 || i === 43) {
+                chave += ' ';
+            }
+        }
+        document.getElementById('chave_acesso').value = chave;
+    }
+
+    document.getElementById('gerarChave').addEventListener('click', gerarChaveAcesso);
+
+    // ===== MÁSCARAS =====
+    document.getElementById('cpf_passageiro').addEventListener('input', function() {
+        let valor = this.value.replace(/\D/g, '');
+        if (valor.length > 11) valor = valor.slice(0, 11);
+        if (valor.length <= 3) {
+            this.value = valor;
+        } else if (valor.length <= 6) {
+            this.value = valor.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+        } else if (valor.length <= 9) {
+            this.value = valor.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+        } else {
+            this.value = valor.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+        }
+        validarCPF();
+    });
+
+    document.getElementById('embarque_data').addEventListener('input', function() {
+        let valor = this.value.replace(/\D/g, '');
+        if (valor.length > 8) valor = valor.slice(0, 8);
+        if (valor.length <= 2) {
+            this.value = valor;
+        } else if (valor.length <= 4) {
+            this.value = valor.replace(/(\d{2})(\d{1,2})/, '$1/$2');
+        } else {
+            this.value = valor.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
+        }
+    });
+
+    document.getElementById('embarque_hora').addEventListener('input', function() {
+        let valor = this.value.replace(/\D/g, '');
+        if (valor.length > 4) valor = valor.slice(0, 4);
+        if (valor.length <= 2) {
+            this.value = valor;
+        } else {
+            this.value = valor.replace(/(\d{2})(\d{1,2})/, '$1:$2');
+        }
+    });
+
+    document.querySelectorAll('.moeda').forEach(campo => {
+        campo.addEventListener('input', function() {
+            let valor = this.value.replace(/\D/g, '');
+            if (valor === '') { this.value = ''; return; }
+            let inteiro = valor.slice(0, -2);
+            let centavos = valor.slice(-2);
+            if (centavos.length === 1) centavos = '0' + centavos;
+            if (inteiro === '') inteiro = '0';
+            this.value = inteiro + ',' + centavos;
+        });
+    });
+
+    // ===== VALIDAR CPF =====
+    function validarCPF() {
+        const campo = document.getElementById('cpf_passageiro');
+        const erro = document.getElementById('erro_cpf');
+        const cpf = campo.value.replace(/\D/g, '');
+
+        if (cpf.length === 0) {
+            erro.textContent = '';
+            campo.style.borderColor = '';
+            return true;
+        }
+
+        if (cpf.length !== 11) {
+            erro.textContent = '❌ CPF deve ter 11 dígitos';
+            campo.style.borderColor = '#dc3545';
+            return false;
+        }
+
+        const invalidos = ['00000000000','11111111111','22222222222','33333333333','44444444444','55555555555','66666666666','77777777777','88888888888','99999999999'];
+        if (invalidos.includes(cpf)) {
+            erro.textContent = '❌ CPF inválido';
+            campo.style.borderColor = '#dc3545';
+            return false;
+        }
+
+        let soma = 0;
+        for (let i = 0; i < 9; i++) soma += parseInt(cpf.charAt(i)) * (10 - i);
+        let resto = 11 - (soma % 11);
+        let dig1 = (resto === 10 || resto === 11) ? 0 : resto;
+
+        if (parseInt(cpf.charAt(9)) !== dig1) {
+            erro.textContent = '❌ CPF inválido';
+            campo.style.borderColor = '#dc3545';
+            return false;
+        }
+
+        soma = 0;
+        for (let i = 0; i < 10; i++) soma += parseInt(cpf.charAt(i)) * (11 - i);
+        resto = 11 - (soma % 11);
+        let dig2 = (resto === 10 || resto === 11) ? 0 : resto;
+
+        if (parseInt(cpf.charAt(10)) !== dig2) {
+            erro.textContent = '❌ CPF inválido';
+            campo.style.borderColor = '#dc3545';
+            return false;
+        }
+
+        erro.textContent = '✅ CPF válido';
+        erro.style.color = '#28a745';
+        campo.style.borderColor = '#28a745';
+        return true;
+    }
+
+    // ===== CALCULAR VALORES =====
+    function calcularValores() {
+        const tarifa = parseFloat(document.getElementById('tarifa').value.replace('.', '').replace(',', '.')) || 0;
+        const taxa = parseFloat(document.getElementById('taxa_embarque').value.replace('.', '').replace(',', '.')) || 0;
+        const seguro = parseFloat(document.getElementById('seguro').value.replace('.', '').replace(',', '.')) || 0;
+        const outros = parseFloat(document.getElementById('outros').value.replace('.', '').replace(',', '.')) || 0;
+        const desconto = parseFloat(document.getElementById('desconto').value.replace('.', '').replace(',', '.')) || 0;
+
+        const total = tarifa + taxa + seguro + outros;
+        const aPagar = total - desconto;
+
+        document.getElementById('valor_total').value = total.toFixed(2).replace('.', ',');
+        document.getElementById('valor_pagar').value = aPagar.toFixed(2).replace('.', ',');
+
+        const pago = parseFloat(document.getElementById('valor_pago').value.replace('.', '').replace(',', '.')) || 0;
+        const troco = pago - aPagar;
+        document.getElementById('troco').value = troco > 0 ? troco.toFixed(2).replace('.', ',') : '0,00';
+    }
+
+    document.querySelectorAll('#tarifa, #taxa_embarque, #seguro, #outros, #desconto, #valor_pago').forEach(campo => {
+        campo.addEventListener('input', calcularValores);
+    });
+
+    // ===== GERAR PDF =====
+    document.getElementById('btnGerar').addEventListener('click', function() {
+        const obrigatorios = ['nome_passageiro', 'cpf_passageiro', 'origem', 'destino', 'embarque_data', 'embarque_hora', 'poltrona'];
+        let valido = true;
+
+        obrigatorios.forEach(id => {
+            const campo = document.getElementById(id);
+            if (!campo.value.trim()) {
+                campo.style.borderColor = '#dc3545';
+                valido = false;
+            } else {
+                campo.style.borderColor = '';
+            }
+        });
+
+        if (!validarCPF()) valido = false;
+
+        if (!valido) {
+            alert('❌ Preencha todos os campos obrigatórios e corrija o CPF.');
+            return;
+        }
+
+        // ===== PREENCHER A PASSAGEM =====
+        document.getElementById('p-nome').textContent = document.getElementById('nome_passageiro').value.toUpperCase();
+        document.getElementById('p-cpf').textContent = document.getElementById('cpf_passageiro').value;
+        document.getElementById('p-nascimento').textContent = document.getElementById('nascimento_passageiro').value || '-';
+        document.getElementById('p-rg').textContent = document.getElementById('rg_passageiro').value || '-';
+        
+        document.getElementById('p-origem').textContent = document.getElementById('origem').value.toUpperCase();
+        document.getElementById('p-destino').textContent = document.getElementById('destino').value.toUpperCase();
+        document.getElementById('p-embarque').textContent = document.getElementById('embarque_data').value + ', às ' + document.getElementById('embarque_hora').value;
+        document.getElementById('p-poltrona').textContent = document.getElementById('poltrona').value + ' Plataforma: ' + (document.getElementById('plataforma').value || '0');
+        document.getElementById('p-linha').textContent = document.getElementById('linha').value.toUpperCase() || '-';
+        document.getElementById('p-tipo').textContent = document.getElementById('tipo_viagem').value;
+
+        document.getElementById('p-tarifa').textContent = document.getElementById('tarifa').value || '-';
+        document.getElementById('p-taxa').textContent = document.getElementById('taxa_embarque').value || '-';
+        document.getElementById('p-seguro').textContent = document.getElementById('seguro').value || '-';
+        document.getElementById('p-outros').textContent = document.getElementById('outros').value || '-';
+        document.getElementById('p-total').textContent = document.getElementById('valor_total').value || '-';
+        document.getElementById('p-desconto').textContent = document.getElementById('desconto').value || '-';
+        document.getElementById('p-pagar').textContent = document.getElementById('valor_pagar').value || '-';
+        document.getElementById('p-pagamento').textContent = document.getElementById('forma_pagamento').value;
+        document.getElementById('p-pago').textContent = document.getElementById('valor_pago').value || '-';
+        document.getElementById('p-troco').textContent = document.getElementById('troco').value || '-';
+
+        document.getElementById('p-bpe').textContent = document.getElementById('bpe').value || '-';
+        document.getElementById('p-serie').textContent = document.getElementById('serie').value || '-';
+        document.getElementById('p-bilhete').textContent = document.getElementById('bilhete').value || '-';
+        document.getElementById('p-protocolo').textContent = document.getElementById('protocolo').value || '-';
+        document.getElementById('p-data-autorizacao').textContent = document.getElementById('data_autorizacao').value || '-';
+        document.getElementById('p-chave').textContent = document.getElementById('chave_acesso').value || '-';
+
+        document.getElementById('p-icms').textContent = document.getElementById('icms').value || '-';
+        document.getElementById('p-icms-aliquota').textContent = document.getElementById('icms_aliquota').value || '-';
+
+        // ===== GERAR PDF COM html2canvas + jsPDF =====
+        const btn = document.getElementById('btnGerar');
+        const loading = document.getElementById('loading');
+        btn.disabled = true;
+        loading.classList.add('ativo');
+
+        const element = document.getElementById('passagem');
+
+        html2canvas(element, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            width: 794, // 210mm em pixels (96dpi)
+            height: 1123 // 297mm em pixels
+        }).then(canvas => {
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+            
+            const nome = document.getElementById('nome_passageiro').value.replace(/\s/g, '_') || 'passagem';
+            pdf.save(`passagem_${nome}.pdf`);
+            
+            btn.disabled = false;
+            loading.classList.remove('ativo');
+        }).catch(error => {
+            console.error('Erro:', error);
+            alert('❌ Erro ao gerar PDF. Tente novamente.');
+            btn.disabled = false;
+            loading.classList.remove('ativo');
+        });
+    });
+
+    // ===== LIMPAR =====
+    document.getElementById('btnLimpar').addEventListener('click', function(e) {
+        e.preventDefault();
+        if (confirm('Tem certeza que deseja limpar todos os campos?')) {
+            document.querySelectorAll('input, select').forEach(campo => {
+                if (!campo.hasAttribute('readonly') && campo.id !== 'serie' && campo.id !== 'icms_aliquota') {
+                    campo.value = '';
+                    campo.style.borderColor = '';
+                }
+            });
+            document.getElementById('plataforma').value = '0';
+            document.getElementById('serie').value = '3';
+            document.getElementById('icms_aliquota').value = '20,00%';
+            document.getElementById('tipo_viagem').value = 'ORDINÁRIO';
+            document.getElementById('forma_pagamento').value = 'PIX';
+            document.getElementById('erro_cpf').textContent = '';
+            gerarCodigos();
+            calcularValores();
+        }
+    });
+
+    // ===== INICIALIZAR =====
+    gerarCodigos();
+    calcularValores();
+
+});
+</script>
+
+</body>
+</html>
